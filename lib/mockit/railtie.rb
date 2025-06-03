@@ -1,6 +1,9 @@
+# frozen_string_literal: true
+
 require "rails"
 
 module Mockit
+  # Rails railtie
   class Railtie < Rails::Railtie
     initializer "mockit.insert_middleware" do |app|
       app.middleware.insert_before 0, Mockit::Middleware::RequestStore

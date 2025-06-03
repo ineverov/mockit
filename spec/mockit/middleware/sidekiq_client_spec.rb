@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 
 RSpec.describe Mockit::Middleware::SidekiqClient do
@@ -9,4 +11,3 @@ RSpec.describe Mockit::Middleware::SidekiqClient do
     expect(job["mock_id"]).to eq("sidekiq-mock-id")
   end
 end
-

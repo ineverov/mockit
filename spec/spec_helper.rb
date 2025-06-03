@@ -4,7 +4,7 @@ ENV["RAILS_ENV"] ||= "test"
 
 require "mockit"
 
-require 'rails'
+require "rails"
 require "request_store"
 require "redis"
 

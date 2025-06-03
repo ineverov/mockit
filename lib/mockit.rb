@@ -13,6 +13,7 @@ require "mockit/middleware/sidekiq_client"
 require "mockit/middleware/sidekiq_server"
 require "mockit/controllers/mocks_controller"
 
+# Base module for Mockit gem
 module Mockit
   class Error < StandardError; end
 

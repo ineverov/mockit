@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # spec/support/test_app.rb
 require "rails"
 require "action_controller/railtie"
@@ -13,7 +15,7 @@ module TestApp
     # Insert the engine
     initializer :append_routes do |app|
       app.routes.append do
-        get "/ping", to: ->(env) { [200, { "Content-Type" => "text/plain" }, ["pong"]] }
+        get "/ping", to: ->(_env) { [200, { "Content-Type" => "text/plain" }, ["pong"]] }
         mount Mockit::Engine => "/mockit"
       end
     end

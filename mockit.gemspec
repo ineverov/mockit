@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.description = <<-DESCRIPTION
     Allows mocking external services per-request using X-Mock-Id headers and Redis. Works with Sidekiq."
   DESCRIPTION
-  spec.homepage = 'http://rubygems.org'
+  spec.homepage = "http://rubygems.org"
 
   spec.license = "MIT"
   spec.required_ruby_version = ">= 3.1.0"

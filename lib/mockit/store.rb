@@ -1,4 +1,7 @@
+# frozen_string_literal: true
+
 module Mockit
+  # Wrapper for cache store
   class Store
     def self.write(service:, overrides:, ttl: 600)
       key = current_mock_key(service:)

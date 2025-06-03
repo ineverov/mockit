@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "spec_helper"
 
 RSpec.describe "Mockit::MocksController", type: :request do
@@ -5,7 +7,7 @@ RSpec.describe "Mockit::MocksController", type: :request do
     let(:valid_params) do
       {
         service: "my_service",
-        overrides: { data: "mocked last_response", status: '200' }
+        overrides: { data: "mocked last_response", status: "200" }
       }
     end
 

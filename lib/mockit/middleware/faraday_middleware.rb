@@ -1,8 +1,11 @@
-require 'faraday'
+# frozen_string_literal: true
+
+require "faraday"
 
 Faraday::Middleware.register_middleware mockit_header: -> { Mockit::FaradayMiddleware }
 
 module Mockit
+  # Faraday middleware responsible for passing mock header down the call chain
   class FaradayMiddleware < Faraday::Middleware
     def call(env)
       mock_id = Mockit::Store.current_mock_id

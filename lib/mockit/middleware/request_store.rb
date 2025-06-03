@@ -1,7 +1,10 @@
+# frozen_string_literal: true
+
 require "request_store"
 
 module Mockit
   module Middleware
+    # Middleware to read header from the request and set it for future use
     class RequestStore
       def initialize(app)
         @app = app
