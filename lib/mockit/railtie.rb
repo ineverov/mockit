@@ -20,6 +20,7 @@ module Mockit
           config.server_middleware { |chain| chain.add Mockit::Middleware::SidekiqServer }
         end
       end
+      Mockit.run_post_initialize_hooks!
     end
   end
 end

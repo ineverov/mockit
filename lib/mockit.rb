@@ -17,22 +17,48 @@ require "mockit/controllers/mocks_controller"
 module Mockit
   class Error < StandardError; end
 
-  def self.mock_classes(*client_classes)
-    client_classes.each do |client_class|
-      mock_module = resolve_mock_module(client_class)
-      next unless mock_module
+  class << self
+    attr_writer :logger, :storage
 
-      service_key = extract_service_key(client_class)
-      BaseMocker.wrap(client_class, mock_module, service_key)
+    def mock_classes(*client_classes)
+      client_classes.each do |client_class|
+        Mockit.logger.info "Mocking class #{client_class}"
+        mock_module = resolve_mock_module(client_class)
+        next unless mock_module
+
+        service_key = extract_service_key(client_class)
+        Mocker.wrap(client_class, mock_module, service_key)
+      end
     end
-  end
 
-  private_class_method def self.resolve_mock_module(client_class)
-    mock_module_name = "Mockit::Mock::#{client_class.name.demodulize}"
-    mock_module_name.safe_constantize
-  end
+    def run_post_initialize_hooks!
+      @config_blocks.each do |block|
+        block.call(self)
+      end
+    end
 
-  private_class_method def self.extract_service_key(client_class)
-    client_class.name.demodulize.underscore.to_sym
+    def configure(&block)
+      @config_blocks ||= []
+      @config_blocks << block
+    end
+
+    def logger
+      @logger ||= Logger.new($stdout)
+    end
+
+    def storage
+      @storage ||= Rails.cache
+    end
+
+    private
+
+    def resolve_mock_module(client_class)
+      mock_module_name = "Mockit::Mock::#{client_class.name.demodulize}"
+      mock_module_name.safe_constantize
+    end
+
+    def extract_service_key(client_class)
+      client_class.name.demodulize.underscore.to_sym
+    end
   end
 end

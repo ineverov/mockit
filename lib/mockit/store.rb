@@ -5,13 +5,13 @@ module Mockit
   class Store
     def self.write(service:, overrides:, ttl: 600)
       key = current_mock_key(service:)
-      Rails.logger.info "Setting key #{key} with value #{overrides.to_json}"
-      Rails.cache.write(key, overrides.to_json, expires_in: ttl)
+      Mockit.logger.info "Setting key #{key} with value #{overrides.to_json}"
+      Mockit.storage.write(key, overrides.to_json, expires_in: ttl)
     end
 
     def self.read(service:)
       key = current_mock_key(service: service)
-      json = Rails.cache.read(key)
+      json = Mockit.storage.read(key)
       json ? JSON.parse(json) : nil
     end
 
