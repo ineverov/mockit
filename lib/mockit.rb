@@ -32,7 +32,7 @@ module Mockit
     end
 
     def run_post_initialize_hooks!
-      @config_blocks.each do |block|
+      (@config_blocks || []).each do |block|
         block.call(self)
       end
     end
