@@ -24,9 +24,14 @@ module Mockit
         Mockit.logger.info "Redefining method #{real_name} with #{mock_name} implementation"
         # redefine real method
         redefine_method(target, real_name, service_key, mock_name)
-        # copy over original mock method
-        target.define_method(mock_name) do |*args, **kwargs, &block|
-          mock_module.method(mock_name).call(*args, **kwargs, &block)
+
+        if mod.is_a?(Class)
+          # copy over original mock method if this is a class
+          target.define_method(mock_name) do |*args, **kwargs, &block|
+            mock_module.method(mock_name).call(*args, **kwargs, &block)
+          end
+        else
+          target.include(mod)
         end
       end
     end
@@ -39,6 +44,7 @@ module Mockit
         end
 
         if (override = Mockit::Store.read(service: service_key))
+
           send(mock_name, override, super_block, *args, **kwargs, &block)
         else
           super(*args, **kwargs, &block)
