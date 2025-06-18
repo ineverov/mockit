@@ -5,35 +5,34 @@ module Mockit
   # Module handing wrapping original impementation with mocked one
   module Mocker
     def self.wrap(target_class, mock_module, service_key)
-      # Instance methods wrapper
-      instance_wrapper = Module.new
-      wrap_methods(service_key, instance_wrapper, mock_module, mock_module)
-      target_class.prepend(instance_wrapper)
-
-      # Class methods wrapper
-      singleton_wrapper = Module.new
-      wrap_methods(service_key, singleton_wrapper, mock_module.singleton_class, mock_module)
-      target_class.singleton_class.prepend(singleton_wrapper)
+      mock_instance_methods(target_class, mock_module, service_key)
+      mock_singleton_methods(target_class, mock_module, service_key)
     end
 
-    def self.wrap_methods(service_key, target, mod, mock_module)
-      mock_methods = mod.instance_methods.grep(/^mock_/)
+    def self.mock_instance_methods(target_class, mock_module, service_key)
+      meth_map = mock_module.instance_methods(false)
+                            .grep(/^mock_/)
+                            .to_h { |name| [name, mock_module.instance_method(name)] }
+      target_class.prepend(wrap_methods(service_key, meth_map))
+    end
 
-      mock_methods.each do |mock_name|
-        real_name = mock_name.to_s.sub(/^mock_/, "").to_sym
-        Mockit.logger.info "Redefining method #{real_name} with #{mock_name} implementation"
-        # redefine real method
-        redefine_method(target, real_name, service_key, mock_name)
+    def self.mock_singleton_methods(target_class, mock_module, service_key)
+      meth_map = mock_module.singleton_methods(false)
+                            .grep(/^mock_/)
+                            .to_h { |name| [name, mock_module.method(name).to_proc] }
+      target_class.singleton_class.prepend(wrap_methods(service_key, meth_map))
+    end
 
-        if mod.is_a?(Class)
-          # copy over original mock method if this is a class
-          target.define_method(mock_name) do |*args, **kwargs, &block|
-            mock_module.method(mock_name).call(*args, **kwargs, &block)
-          end
-        else
-          target.include(mod)
-        end
+    def self.wrap_methods(service_key, mapping)
+      wrapper = Module.new
+      mapping.each do |name, meth|
+        wrapper.define_method(name, meth)
+        real_name = name.to_s.sub(/^mock_/, "").to_sym
+
+        Mockit.logger.info "Redefining method #{real_name} with #{name} implementation"
+        redefine_method(wrapper, real_name, service_key, name)
       end
+      wrapper
     end
 
     def self.redefine_method(target, real_name, service_key, mock_name) # rubocop:disable Metrics/MethodLength
@@ -44,7 +43,6 @@ module Mockit
         end
 
         if (override = Mockit::Store.read(service: service_key))
-
           send(mock_name, override, super_block, *args, **kwargs, &block)
         else
           super(*args, **kwargs, &block)

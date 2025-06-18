@@ -20,14 +20,13 @@ module Mockit
   class << self
     attr_writer :logger, :storage
 
-    def mock_classes(*client_classes)
-      client_classes.each do |client_class|
-        Mockit.logger.info "Mocking class #{client_class}"
-        mock_module = resolve_mock_module(client_class)
+    def mock_classes(**mocking_map)
+      mocking_map.each do |klass, mock_module|
         next unless mock_module
 
-        service_key = extract_service_key(client_class)
-        Mocker.wrap(client_class, mock_module, service_key)
+        Mockit.logger.info "Mocking class #{klass} with #{mock_module}"
+
+        Mocker.wrap(klass, mock_module, extract_service_key(klass))
       end
     end
 
@@ -52,13 +51,8 @@ module Mockit
 
     private
 
-    def resolve_mock_module(client_class)
-      mock_module_name = "Mockit::Mock::#{client_class.name.demodulize}"
-      mock_module_name.safe_constantize
-    end
-
     def extract_service_key(client_class)
-      client_class.name.demodulize.underscore.to_sym
+      client_class.name.underscore.to_sym
     end
   end
 end

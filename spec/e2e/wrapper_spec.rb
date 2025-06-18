@@ -1,0 +1,87 @@
+# frozen_string_literal: true
+
+require "spec_helper"
+
+RSpec.describe Mockit do
+  let(:client_class) do
+    Class.new do
+      def inst_method(*args)
+        'original_instance_method'
+      end
+
+      def other_instance_method(*args)
+        'other_original_instance_method'
+      end
+
+      def self.snglton_method(*args)
+        'original_singleton_method'
+      end
+
+      def self.other_singleton_method(*args)
+        'other_original_singleton_method'
+      end
+    end
+  end
+
+  let(:mock_module) do
+    Module.new do
+      def mock_inst_method(overrides, super_block, *args)
+        [super_block.call, overrides, args]
+      end
+
+      def self.mock_snglton_method(overrides, super_block, *args)
+        [super_block.call, overrides, args]
+      end
+    end
+  end
+
+  let(:instance) do
+    client_class.new
+  end
+
+  before do
+    Mockit.logger = Logger.new('/dev/null')
+    RequestStore.store[:mock_id] = 'a123b'
+    allow(client_class).to receive(:name).and_return('Module::ClassName')
+    Mockit.mock_classes(client_class => mock_module)
+  end
+
+  after do
+    RequestStore.clear!
+    Mockit.storage.clear
+  end
+
+  it 'redefines methods' do
+    expect(instance).to be_respond_to(:inst_method)
+    expect(instance).to be_respond_to(:mock_inst_method)
+    expect(instance).not_to be_respond_to(:mock_other_instance_method)
+
+    expect(client_class).to be_respond_to(:snglton_method)
+    expect(client_class).to be_respond_to(:mock_snglton_method)
+    expect(client_class).not_to be_respond_to(:mock_other_singleton_method)
+  end
+
+  context 'without overrides for service' do
+    before do
+      Mockit::Store.write(service: "module/different_class_name", overrides: { key: true })
+    end
+
+    it "calls original methods" do
+      expect(instance.inst_method(1)).to eq('original_instance_method')
+      expect(instance.other_instance_method(2)).to eq('other_original_instance_method')
+      expect(client_class.snglton_method(1)).to eq('original_singleton_method')
+      expect(client_class.other_singleton_method(2)).to eq('other_original_singleton_method')
+    end
+  end
+
+  context 'with overrides set' do
+    it "calls mock method" do
+      Mockit::Store.write(service: "module/class_name", overrides: { key: true })
+      expect(instance.inst_method(1)).to eq(['original_instance_method', {"key" => true}, [1]])
+      expect(instance.other_instance_method(2)).to eq('other_original_instance_method')
+
+      expect(client_class.snglton_method(1)).to eq(['original_singleton_method', {"key" => true}, [1]])
+      expect(client_class.other_singleton_method(2)).to eq('other_original_singleton_method')
+    end
+  end
+end

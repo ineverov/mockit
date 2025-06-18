@@ -37,4 +37,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rails", ">= 6.0"
   spec.add_dependency "redis"
   spec.add_dependency "request_store"
+  spec.add_development_dependency "simplecov"
 end
