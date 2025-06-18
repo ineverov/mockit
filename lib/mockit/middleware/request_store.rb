@@ -13,8 +13,10 @@ module Mockit
       def call(env)
         ::RequestStore.begin!
         mock_id = env["HTTP_X_MOCK_ID"]
-        Mockit.logger.info "Setting mock_id for request to #{env["HTTP_X_MOCK_ID"]}. ENV= #{env}"
-        Mockit::Store.mock_id = mock_id if mock_id
+        if mock_id
+          Mockit.logger.info "Setting mock_id for request to #{mock_id}"
+          Mockit::Store.mock_id = mock_id
+        end
         @app.call(env)
       ensure
         ::RequestStore.end!
