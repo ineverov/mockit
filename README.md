@@ -101,7 +101,7 @@ Call `Mockit.mock_classes` in an initializer or during boot:
 
 ```ruby
 # config/initializers/mockit.rb
-Mockit.mock_classes(External::Client)
+Mockit.mock_classes(External::Client => MockModuleForClient)
 ```
 
 This will dynamically override methods if mocks are present.
