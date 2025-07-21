@@ -64,7 +64,7 @@ RSpec.describe "Mockit::MocksController", type: :request do
 
     context "when mock exists" do
       before do
-        allow(Mockit::Store).to receive(:delete).with(service: service).and_return(nil)
+        expect(Mockit::Store).to receive(:delete).with(service: service)
       end
 
       it "returns the mock last_response" do
