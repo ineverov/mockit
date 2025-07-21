@@ -24,7 +24,7 @@ module Mockit
       end
     end
 
-    def delete
+    def destroy
       service = params.require(:service)
 
       Mockit::Store.delete(service: service)

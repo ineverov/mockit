@@ -16,7 +16,7 @@ RSpec.describe Mockit::Store do
 
     expect(result).to eq("success" => true)
 
-    described_class.delete(service: 'test_service')
+    described_class.delete(service: "test_service")
     result = described_class.read(service: "test_service")
     expect(result).to eq(nil)
   end
