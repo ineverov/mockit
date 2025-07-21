@@ -27,8 +27,12 @@ module Mockit
     def destroy
       service = params.require(:service)
 
-      Mockit::Store.delete(service: service)
-      render json: { status: "ok" }
+      deleted = Mockit::Store.delete(service: service)
+      if deleted
+        render json: { status: "ok" }
+      else
+        render status: 404
+      end
     end
   end
 end

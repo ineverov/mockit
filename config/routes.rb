@@ -2,6 +2,6 @@
 
 Mockit::Engine.routes.draw do
   post   "/mocks", to: "mocks#create"
-  get    "/mocks", to: "mocks#show"
-  delete "/mocks", to: "mocks#destroy"
+  get    "/mocks/:service", to: "mocks#show"
+  delete "/mocks/:service", to: "mocks#destroy"
 end
