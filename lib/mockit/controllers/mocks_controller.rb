@@ -31,7 +31,7 @@ module Mockit
       if deleted
         render json: { status: "ok" }
       else
-        render status: 404
+        render json: { error: "Not Found" }, status: :not_found
       end
     end
   end
