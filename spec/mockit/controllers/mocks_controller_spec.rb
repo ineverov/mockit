@@ -58,4 +58,20 @@ RSpec.describe "Mockit::MocksController", type: :request do
       end
     end
   end
+
+  describe "DELETE /mockit/mocks" do
+    let(:service) { "my_service" }
+
+    context "when mock exists" do
+      before do
+        allow(Mockit::Store).to receive(:delete).with(service: service).and_return(nil)
+      end
+
+      it "returns the mock last_response" do
+        delete "/mockit/mocks", params: { service: service }
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+  end
 end

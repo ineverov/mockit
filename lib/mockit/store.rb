@@ -15,6 +15,11 @@ module Mockit
       json ? JSON.parse(json) : nil
     end
 
+    def self.delete(service:)
+      key = current_mock_key(service: service)
+      Mockit.storage.delete(key)
+    end
+
     def self.current_mock_id
       RequestStore.store[:mock_id]
     end

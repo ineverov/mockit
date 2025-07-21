@@ -23,5 +23,12 @@ module Mockit
         render json: { error: "Not Found" }, status: :not_found
       end
     end
+
+    def delete
+      service = params.require(:service)
+
+      Mockit::Store.delete(service: service)
+      render json: { status: "ok" }
+    end
   end
 end
