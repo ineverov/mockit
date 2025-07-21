@@ -15,6 +15,10 @@ RSpec.describe Mockit::Store do
     result = described_class.read(service: "test_service")
 
     expect(result).to eq("success" => true)
+
+    described_class.delete(service: 'test_service')
+    result = described_class.read(service: "test_service")
+    expect(result).to eq(nil)
   end
 
   it "returns nil if no data is present" do
