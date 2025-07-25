@@ -4,6 +4,10 @@
 require "rails"
 require "action_controller/railtie"
 
+Mockit.configure do |config|
+  config.logger = Logger.new("/dev/null")
+end
+
 module TestApp
   class Application < Rails::Application
     config.root = File.dirname(__FILE__)

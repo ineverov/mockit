@@ -3,10 +3,11 @@
 require "spec_helper"
 
 RSpec.describe "Mockit::MocksController", type: :request do
+  let(:service) { "my/module/test/service" }
   describe "POST /mockit/mocks" do
     let(:valid_params) do
       {
-        service: "my_service",
+        service: service,
         overrides: { data: "mocked last_response", status: "200" }
       }
     end
@@ -24,8 +25,7 @@ RSpec.describe "Mockit::MocksController", type: :request do
     end
   end
 
-  describe "GET /mockit/mocks" do
-    let(:service) { "my_service" }
+  describe "GET /mockit/mocks/:service" do
     let(:mock_response) { { "data" => "mocked last_response", "status" => 200 } }
 
     context "when mock exists" do
@@ -36,7 +36,7 @@ RSpec.describe "Mockit::MocksController", type: :request do
       end
 
       it "returns the mock last_response" do
-        get "/mockit/mocks", params: { service: service }
+        get "/mockit/mocks/#{service}"
 
         expect(response).to have_http_status(:ok)
         expect(JSON.parse(response.body)).to eq(mock_response)
@@ -51,10 +51,36 @@ RSpec.describe "Mockit::MocksController", type: :request do
       end
 
       it "returns not found status" do
-        get "/mockit/mocks", params: { service: service }
+        get "/mockit/mocks/#{service}"
 
         expect(response).to have_http_status(:not_found)
         expect(JSON.parse(response.body)).to eq("error" => "Not Found")
+      end
+    end
+  end
+
+  describe "DELETE /mockit/mocks/:service" do
+    context "when mock exists" do
+      before do
+        expect(Mockit::Store).to receive(:delete).with(service: service).and_return(true)
+      end
+
+      it "returns the mock last_response" do
+        delete "/mockit/mocks/#{service}"
+
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when mock does not exist" do
+      before do
+        expect(Mockit::Store).to receive(:delete).with(service: "something").and_return(false)
+      end
+
+      it "returns the mock last_response" do
+        delete "/mockit/mocks/something"
+
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
