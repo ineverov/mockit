@@ -3,10 +3,11 @@
 require "spec_helper"
 
 RSpec.describe "Mockit::MocksController", type: :request do
+  let(:service) { "my/module/test/service" }
   describe "POST /mockit/mocks" do
     let(:valid_params) do
       {
-        service: "my_service",
+        service: service,
         overrides: { data: "mocked last_response", status: "200" }
       }
     end
@@ -25,7 +26,6 @@ RSpec.describe "Mockit::MocksController", type: :request do
   end
 
   describe "GET /mockit/mocks/:service" do
-    let(:service) { "my_service" }
     let(:mock_response) { { "data" => "mocked last_response", "status" => 200 } }
 
     context "when mock exists" do
@@ -60,8 +60,6 @@ RSpec.describe "Mockit::MocksController", type: :request do
   end
 
   describe "DELETE /mockit/mocks/:service" do
-    let(:service) { "my_service" }
-
     context "when mock exists" do
       before do
         expect(Mockit::Store).to receive(:delete).with(service: service).and_return(true)

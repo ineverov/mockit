@@ -3,7 +3,7 @@
 ENV["RAILS_ENV"] ||= "test"
 require "simplecov"
 
-SimpleCov.minimum_coverage 97
+SimpleCov.minimum_coverage 98.43
 SimpleCov.refuse_coverage_drop :line
 SimpleCov.start
 
@@ -30,10 +30,6 @@ RSpec.configure do |config|
 
   config.expect_with :rspec do |c|
     c.syntax = :expect
-  end
-
-  config.before do
-    Mockit.logger = Logger.new("/dev/null")
   end
 
   config.infer_spec_type_from_file_location!
