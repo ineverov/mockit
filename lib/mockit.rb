@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "mockit/version"
-
 require "mockit/version"
 require "mockit/store"
 require "mockit/railtie"
@@ -9,6 +7,7 @@ require "mockit/engine"
 require "mockit/mocker"
 
 require "mockit/middleware/request_store"
+require "mockit/middleware/faraday_middleware"
 require "mockit/middleware/sidekiq_client"
 require "mockit/middleware/sidekiq_server"
 require "mockit/controllers/mocks_controller"
@@ -18,7 +17,7 @@ module Mockit
   class Error < StandardError; end
 
   class << self
-    attr_writer :logger, :storage
+    attr_writer :logger, :storage, :default_ttl
 
     def mock_classes(**mocking_map)
       mocking_map.each do |klass, mock_module|
@@ -47,6 +46,10 @@ module Mockit
 
     def storage
       @storage ||= Rails.cache
+    end
+
+    def default_ttl
+      @default_ttl ||= 600
     end
 
     private

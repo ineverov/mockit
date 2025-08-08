@@ -3,20 +3,31 @@
 module Mockit
   # Wrapper for cache store
   class Store
-    def self.write(service:, overrides:, ttl: 600)
+    require "json"
+
+    # Small per-request memoization to avoid repeated cache lookups
+    def self._memo
+      ::RequestStore.store[:mockit_store_memo] ||= {}
+    end
+
+    def self.write(service:, overrides:, ttl: Mockit.default_ttl)
       key = current_mock_key(service:)
       Mockit.logger.info "Setting key #{key} with value #{overrides.to_json}"
+      _memo.delete(key)
       Mockit.storage.write(key, overrides.to_json, expires_in: ttl)
     end
 
     def self.read(service:)
       key = current_mock_key(service: service)
+      return _memo[key] if _memo.key?(key)
+
       json = Mockit.storage.read(key)
-      json ? JSON.parse(json) : nil
+      _memo[key] = json ? JSON.parse(json) : nil
     end
 
     def self.delete(service:)
       key = current_mock_key(service: service)
+      _memo.delete(key)
       Mockit.storage.delete(key)
     end
 

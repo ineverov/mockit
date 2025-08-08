@@ -4,7 +4,7 @@ require "spec_helper"
 require "json"
 
 RSpec.describe "Mockit E2E", type: :request do
-  let(:mockit_header) { { "HTTP_X_MOCKIT_ID" => "abc123" } }
+  let(:mockit_header) { { "HTTP_X_MOCK_ID" => "abc123" } }
 
   it "creates and fetches a mock last_response via the mockit engine" do
     service = "payment_service"

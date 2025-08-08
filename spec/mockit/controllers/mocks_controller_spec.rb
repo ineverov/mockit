@@ -65,7 +65,7 @@ RSpec.describe "Mockit::MocksController", type: :request do
         expect(Mockit::Store).to receive(:delete).with(service: service).and_return(true)
       end
 
-      it "returns the mock last_response" do
+      it "returns ok when deleted" do
         delete "/mockit/mocks/#{service}"
 
         expect(response).to have_http_status(:ok)
@@ -77,7 +77,7 @@ RSpec.describe "Mockit::MocksController", type: :request do
         expect(Mockit::Store).to receive(:delete).with(service: "something").and_return(false)
       end
 
-      it "returns the mock last_response" do
+      it "returns not found when missing" do
         delete "/mockit/mocks/something"
 
         expect(response).to have_http_status(:not_found)

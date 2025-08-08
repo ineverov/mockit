@@ -13,6 +13,35 @@ require "rails"
 require "request_store"
 require "redis"
 
+# Define a minimal Sidekiq stub so Railtie sidekiq configuration paths execute during initialization
+unless defined?(Sidekiq)
+  module Sidekiq
+    class Chain
+      def add(*)
+        # no-op for tests
+      end
+    end
+
+    class Config
+      def client_middleware
+        yield Chain.new
+      end
+
+      def server_middleware
+        yield Chain.new
+      end
+    end
+
+    def self.configure_client
+      yield Config.new
+    end
+
+    def self.configure_server
+      yield Config.new
+    end
+  end
+end
+
 require_relative "support/test_app"
 Rails.application.initialize!
 
