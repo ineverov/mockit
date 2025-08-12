@@ -7,6 +7,7 @@ module Mockit
       def call(_worker, job, _queue)
         if job["mock_id"]
           ::RequestStore.begin!
+          Mockit.logger.info "Mockit: Set Mockit::Store.mock_id=#{job["mock_id"]} for a job #{job}"
           Mockit::Store.mock_id = job["mock_id"]
         end
         yield
