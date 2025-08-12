@@ -3,9 +3,36 @@
 ENV["RAILS_ENV"] ||= "test"
 require "simplecov"
 
-SimpleCov.minimum_coverage 98.43
+SimpleCov.minimum_coverage 100
 SimpleCov.refuse_coverage_drop :line
 SimpleCov.start
+
+# Ensure a minimal Sidekiq stub is available during Rails/Railtie initialization
+unless defined?(Sidekiq)
+  module Sidekiq
+    class Config
+      def client_middleware
+        yield Chain.new
+      end
+
+      def server_middleware
+        yield Chain.new
+      end
+    end
+
+    class Chain
+      def add(_); end
+    end
+
+    def self.configure_client
+      yield Config.new if block_given?
+    end
+
+    def self.configure_server
+      yield Config.new if block_given?
+    end
+  end
+end
 
 require "mockit"
 

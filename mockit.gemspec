@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = "Mock infrastructure with per-request control using headers"
   spec.description = <<-DESCRIPTION
-    Allows mocking external services per-request using X-Mock-Id headers and Redis. Works with Sidekiq."
+    Allows mocking external services per-request using X-Mockit-Id headers. Works with Sidekiq."
   DESCRIPTION
   spec.homepage = "http://rubygems.org"
 
@@ -22,6 +22,7 @@ Gem::Specification.new do |spec|
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = "http://rubygems.org"
   spec.metadata["changelog_uri"] = "http://google.com"
+  spec.metadata["rubygems_mfa_required"] = "true"
 
   # Specify which files should be added to the gem when it is released.
   # The `git ls-files -z` loads the files in the RubyGem that have been added into git.
@@ -35,7 +36,5 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "rails", ">= 6.0"
-  spec.add_dependency "redis"
   spec.add_dependency "request_store"
-  spec.add_development_dependency "simplecov"
 end

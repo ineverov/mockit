@@ -5,9 +5,11 @@ module Mockit
     # Sidekiq middleware extracting mock id from parameters and setting it for request
     class SidekiqServer
       def call(_worker, job, _queue)
-        if job["mock_id"]
+        # If a Sidekiq job contains a `mock_id`, set it in RequestStore for the job execution.
+        if job["mockit_id"]
           ::RequestStore.begin!
-          Mockit::Store.mock_id = job["mock_id"]
+          Mockit.logger.info "Mockit: Set Mockit::Store.mock_id=#{job["mockit_id"]} for a job #{job}"
+          Mockit::Store.mock_id = job["mockit_id"]
         end
         yield
       ensure

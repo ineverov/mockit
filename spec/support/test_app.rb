@@ -5,7 +5,7 @@ require "rails"
 require "action_controller/railtie"
 
 Mockit.configure do |config|
-  config.logger = Logger.new("/dev/null")
+  config.logger = Logger.new(File::NULL)
 end
 
 module TestApp
@@ -24,8 +24,4 @@ module TestApp
       end
     end
   end
-end
-
-Rails.application.configure do
-  config.active_support.to_time_preserves_timezone = :zone
 end

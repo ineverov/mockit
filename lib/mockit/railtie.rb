@@ -6,9 +6,12 @@ module Mockit
   # Rails railtie
   class Railtie < Rails::Railtie
     initializer "mockit.insert_middleware" do |app|
-      app.middleware.insert_before 0, Mockit::Middleware::RequestStore
+      app.middleware.insert_before 0, Mockit::Middleware::MockitIdMiddleware
+      app.middleware.insert_after Mockit::Middleware::MockitIdMiddleware, Mockit::Middleware::MappingFilter
     end
 
+    # After Rails initializes, configure Sidekiq middleware (if present)
+    # and run registered post-initialize hooks.
     config.after_initialize do
       if defined?(Sidekiq)
         Sidekiq.configure_client do |config|

@@ -40,25 +40,25 @@ RSpec.describe Mockit do
   end
 
   before do
-    Mockit.logger = Logger.new("/dev/null")
-    RequestStore.store[:mock_id] = "a123b"
+    described_class.logger = Logger.new(File::NULL)
+    RequestStore.store[:mockit_id] = "a123b"
     allow(client_class).to receive(:name).and_return("Module::ClassName")
-    Mockit.mock_classes(client_class => mock_module)
+    described_class.mock_classes(client_class => mock_module)
   end
 
   after do
     RequestStore.clear!
-    Mockit.storage.clear
+    described_class.storage.clear
   end
 
   it "redefines methods" do
-    expect(instance).to be_respond_to(:inst_method)
-    expect(instance).to be_respond_to(:mock_inst_method)
-    expect(instance).not_to be_respond_to(:mock_other_instance_method)
+    expect(instance).to respond_to(:inst_method)
+    expect(instance).to respond_to(:mock_inst_method)
+    expect(instance).not_to respond_to(:mock_other_instance_method)
 
-    expect(client_class).to be_respond_to(:snglton_method)
-    expect(client_class).to be_respond_to(:mock_snglton_method)
-    expect(client_class).not_to be_respond_to(:mock_other_singleton_method)
+    expect(client_class).to respond_to(:snglton_method)
+    expect(client_class).to respond_to(:mock_snglton_method)
+    expect(client_class).not_to respond_to(:mock_other_singleton_method)
   end
 
   context "without overrides for service" do

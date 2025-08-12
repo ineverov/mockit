@@ -23,14 +23,14 @@ RSpec.describe "Mockit E2E", type: :request do
     expect(JSON.parse(response.body)).to eq("status" => "ok")
 
     # GET /mockit/mocks to retrieve the mock last_response
-    get "/mockit/mocks/#{service}", headers: mockit_header, as: :json
+    get "/mockit/mocks", params: { service: service }, headers: mockit_header, as: :json
 
     expect(response).to have_http_status(:ok)
     expect(JSON.parse(response.body)).to eq(overrides.stringify_keys)
   end
 
   it "returns 404 for unknown mock" do
-    get "/mockit/mocks/unknown_service", headers: mockit_header
+    get "/mockit/mocks", params: { service: "unknown_service" }, headers: mockit_header
 
     expect(response).to have_http_status(:not_found)
     expect(JSON.parse(response.body)).to eq("error" => "Not Found")

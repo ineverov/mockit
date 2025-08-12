@@ -9,7 +9,10 @@ module Mockit
   class FaradayMiddleware < Faraday::Middleware
     def call(env)
       mock_id = Mockit::Store.current_mock_id
-      env.request_headers["X-Mock-Id"] = mock_id if mock_id
+      if mock_id
+        env.request_headers["X-Mockit-Id"] = mock_id
+        Mockit.logger.info "Mockit: Inject X-Mockit-Id header with value #{mock_id}"
+      end
       @app.call(env)
     end
   end
