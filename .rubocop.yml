@@ -1,5 +1,11 @@
+plugins:
+  - rubocop-rake
+  - rubocop-rspec
+  - rubocop-rspec_rails
+
 AllCops:
   TargetRubyVersion: 3.1
+  NewCops: enable
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes
@@ -9,3 +15,12 @@ Style/StringLiteralsInInterpolation:
 
 Metrics/BlockLength:
   AllowedMethods: ['describe', 'context']
+
+RSpec/ExampleLength:
+  Max: 100
+
+RSpec/MultipleExpectations:
+  Max: 10
+
+RSpec/MessageSpies:
+  EnforcedStyle: receive

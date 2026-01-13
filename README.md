@@ -4,11 +4,13 @@
 
 **Mockit** allows you to inject mock responses for external services during end-to-end (E2E) or integration testing. It works seamlessly even when your test suite is outside your main Rails app (e.g., Cypress, mobile tests, etc.).
 
+
 ---
+
 
 ## ✨ Features
 
-* 🎯 Targeted mocking using `X-Mock-Id` header
+* 🎯 Targeted mocking using `X-Mockit-Id` header
 * ⚙️ Middleware-based context tracking (HTTP + Sidekiq)
 * 🧪 Dynamic mock injection via REST API
 * 🔄 Works across web requests and background jobs
@@ -70,10 +72,10 @@ curl -X POST http://localhost:3000/mockit/mocks \
   }'
 ```
 
-### 2. Trigger Test Request With `X-Mock-Id`
+### 2. Trigger Test Request With `X-Mockit-Id`
 
 ```bash
-curl -H "X-Mock-Id: 123" http://localhost:3000/my_feature
+curl -H "X-Mockit-Id: 123" http://localhost:3000/my_feature
 ```
 
 The app will now receive mocked responses for `external_service#get_data`.
@@ -115,7 +117,7 @@ This will dynamically override methods if mocks are present.
    ```bash
    curl -X POST http://localhost:3000/mockit/mocks \
      -H "Content-Type: application/json" \
-     -H "X-Mock-Id: test-abc-1" \
+     -H "X-Mockit-Id: test-abc-1" \
      -d '{
        "service": "external_service",
        "overrides": {
@@ -128,7 +130,7 @@ This will dynamically override methods if mocks are present.
 2. It then starts the real app flow using the same mock ID:
 
    ```bash
-   curl -H "X-Mock-Id: test-abc-1" http://localhost:3000/start_flow
+   curl -H "X-Mockit-Id: test-abc-1" http://localhost:3000/start_flow
    ```
 
 3. Your app internally calls `ExternalClient#fetch_info`, which is overridden to return the mock.
@@ -139,7 +141,7 @@ This will dynamically override methods if mocks are present.
 
 Mockit supports Sidekiq seamlessly:
 
-* Client middleware copies `mock_id` to the job
+* Client middleware copies `mockit_id` to the job
 * Server middleware restores it during job execution
 
 This means your mocked context survives across async workflows.
@@ -190,7 +192,7 @@ Retrieve a mock response.
 
 # 🧩 Faraday Middleware Support for Mockit
 
-Mockit includes a built-in Faraday middleware that automatically forwards the current `X-Mock-Id` to downstream services during HTTP requests. This ensures mock context is preserved across service boundaries in integration or end-to-end tests.
+Mockit includes a built-in Faraday middleware that automatically forwards the current `X-Mockit-Id` to downstream services during HTTP requests. This ensures mock context is preserved across service boundaries in integration or end-to-end tests.
 
 ---
 
@@ -212,7 +214,7 @@ response = connection.get("/data")
 
 ## 🛡 Safe for Production?
 
-Yes — unless you explicitly send an `X-Mock-Id` header, Mockit is dormant. Mocks are only injected when test code demands them.
+Yes — unless you explicitly send an `X-Mockit-Id` header, Mockit is dormant. Mocks are only injected when test code demands them.
 
 ---
 
@@ -235,3 +237,54 @@ Yes — unless you explicitly send an `X-Mock-Id` header, Mockit is dormant. Moc
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+
+## API Examples
+
+Below are concrete examples of using Mockit API
+
+1) Create a mock and fetch it
+
+```bash
+# create a mock for service `payment_service` under X-Mockit-Id: abc123
+curl -X POST http://localhost:3000/mockit/mocks \
+  -H "Content-Type: application/json" \
+  -H "X-Mockit-Id: abc123" \
+  -d '{"service":"payment_service","overrides":{"message":"success","code":200}}'
+
+# fetch it
+curl "http://localhost:3000/mockit/mocks?service=payment_service" -H "X-Mockit-Id: abc123"
+```
+
+2) Create a mapping rule (path + ttl)
+
+```bash
+# map requests matching path ^/ttl$ to the mock id present on the current request
+# (set the mock id via header `X-Mockit-Id` or legacy `X-Mockit-Id`)
+curl -X POST http://localhost:3000/mockit/map_request \
+  -H "Content-Type: application/json" \
+  -H "X-Mockit-Id: abc" \
+  -d '{"match":{"path":"^/ttl$"}, "ttl":10 }'
+```
+
+3) Create mappings with header or query param matching
+
+```bash
+# match on header X-Foo == "bar" (mock id provided via request header)
+curl -X POST http://localhost:3000/mockit/map_request \
+  -H "Content-Type: application/json" \
+  -H "X-Mockit-Id: h-mock" \
+  -d '{"match":{"path":".*","headers":{"X-Foo":"^bar$"}} }'
+
+# match on query param q=find (mock id provided via request header)
+curl -X POST http://localhost:3000/mockit/map_request \
+  -H "Content-Type: application/json" \
+  -H "X-Mockit-Id: p-mock" \
+  -d '{"match":{"path":".*","params":{"q":"^find$"}} }'
+```
+
+4) Teardown mocks for a mock id (used in tests)
+
+```bash
+# when your request carries X-Mockit-Id header, teardown deletes all mocks/mappings for that id
+curl -X DELETE http://localhost:3000/mockit/mocks/teardown -H "X-Mockit-Id: m-abc"
+```

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 Mockit::Engine.routes.draw do
-  post   "/mocks", to: "mocks#create"
-  get    "/mocks/*service", to: "mocks#show"
-  delete "/mocks/*service", to: "mocks#destroy"
+  post "/mocks", to: "mocks#create"
+  get  "/mocks", to: "mocks#show"
+  delete "/mocks", to: "mocks#destroy"
+  delete "/mocks/teardown", to: "mocks#destroy_all"
+  post "/map_request", to: "mocks#create_mapping"
 end
