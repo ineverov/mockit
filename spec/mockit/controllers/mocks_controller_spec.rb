@@ -97,7 +97,6 @@ RSpec.describe "Mockit::MocksController", type: :request do
       Mockit.storage.delete("mockit:mappings")
     end
 
-    # rubocop:disable Metrics/BlockLength
     it "deletes all mocks and mappings" do
       # set a mock under mock_id m-abc and another under m-other
       # create first mock with RequestStore set
@@ -141,7 +140,6 @@ RSpec.describe "Mockit::MocksController", type: :request do
       get "/mockit/mocks", params: { service: "svc2" }
       expect(response).to have_http_status(:ok)
     end
-    # rubocop:enable Metrics/BlockLength
   end
 
   describe "POST /mockit/map_request additional cases" do
