@@ -121,11 +121,39 @@ RSpec.describe Mockit::Store do
       old = { "id" => "old", "match" => { "path" => "^/x$" }, "created_at" => Time.now.to_i - 3600, "ttl" => 1 }
       Mockit.storage.write("mockit:mappings", [old].to_json)
 
-      described_class.write_mapping(match: { "path" => "^/new$" }, mock_id: "new", ttl: 10)
+      described_class.write_mapping(match: { "pat
+                                                   h" => "^/new$" }, mock_id: "new", ttl: 10)
       mappings = described_class.read_mappings
 
       expect(mappings.any? { |m| m["id"] == "old" }).to be false
       expect(mappings.any? { |m| m["id"] == "new" }).to be true
+    end
+
+    it "retries lock acquisition when contention occurs" do
+      call_count = 0
+      allow(Mockit.storage).to receive(:write) do |key, _value, _options|
+        if key == Mockit::Store::MAPPINGS_LOCK_KEY
+          call_count += 1
+          call_count > 1 # fail first time, succeed second time
+        else
+          true
+        end
+      end
+      allow(Mockit.storage).to receive(:read).and_return("[]")
+      allow(Mockit.storage).to receive(:delete)
+
+      described_class.write_mapping(match: { "path" => "^/test$" }, mock_id: "retry-test", ttl: 0.5)
+      expect(call_count).to eq(2)
+    end
+
+    it "raises error when lock acquisition times out" do
+      stub_const("Mockit::DistributedLock::TIMEOUT", 0.1) # set short timeout for test
+      allow(Mockit.storage).to receive(:write).with(Mockit::Store::MAPPINGS_LOCK_KEY, anything,
+                                                    anything).and_return(false)
+
+      expect do
+        described_class.write_mapping(match: { "path" => "^/timeout$" }, mock_id: "timeout-test", ttl: 0.5)
+      end.to raise_error(Mockit::Error, /Failed to acquire lock/)
     end
   end
 end

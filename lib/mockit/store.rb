@@ -3,6 +3,8 @@
 module Mockit
   # Wrapper for cache store
   class Store
+    MAPPINGS_LOCK_KEY = "mockit:mappings:lock"
+
     # Store overrides for a service under the current request's mock id.
     #
     # @param service [String] service identifier
@@ -52,12 +54,14 @@ module Mockit
     # @param mock_id [String] mock id to associate
     # @param ttl [Integer] time-to-live in seconds for this mapping
     def self.write_mapping(match:, mock_id:, ttl: 3600)
-      mappings = read_mappings
-      mappings.reject! { |m| expired_mapping?(m) }
+      DistributedLock.new(Mockit.storage, MAPPINGS_LOCK_KEY).synchronize do
+        mappings = read_mappings
+        mappings.reject! { |m| expired_mapping?(m) }
 
-      mappings << { "id" => mock_id, "match" => match, "created_at" => Time.now.to_i, "ttl" => ttl }
+        mappings << { "id" => mock_id, "match" => match, "created_at" => Time.now.to_i, "ttl" => ttl }
 
-      Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
+        Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
+      end
     end
 
     # Read and return all non-expired mappings.
@@ -88,9 +92,11 @@ module Mockit
     #
     # @param mock_id [String]
     def self.delete_mapping(mock_id:)
-      mappings = read_mappings
-      mappings.reject! { |m| m["id"] == mock_id }
-      Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
+      DistributedLock.new(Mockit.storage, MAPPINGS_LOCK_KEY).synchronize do
+        mappings = read_mappings
+        mappings.reject! { |m| m["id"] == mock_id }
+        Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
+      end
     end
 
     # Returns whether a mapping has expired based on its `created_at` and `ttl`.

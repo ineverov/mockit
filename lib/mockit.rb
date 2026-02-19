@@ -3,6 +3,7 @@
 require_relative "mockit/version"
 
 require "mockit/version"
+require "mockit/distributed_lock"
 require "mockit/store"
 require "mockit/railtie"
 require "mockit/engine"
