@@ -3,6 +3,9 @@
 module Mockit
   # Wrapper for cache store
   class Store
+    MAPPINGS_LOCK_KEY = "mockit:mappings:lock"
+    LOCK_TIMEOUT = 10 # seconds
+
     # Store overrides for a service under the current request's mock id.
     #
     # @param service [String] service identifier
@@ -52,12 +55,14 @@ module Mockit
     # @param mock_id [String] mock id to associate
     # @param ttl [Integer] time-to-live in seconds for this mapping
     def self.write_mapping(match:, mock_id:, ttl: 3600)
-      mappings = read_mappings
-      mappings.reject! { |m| expired_mapping?(m) }
+      with_lock(MAPPINGS_LOCK_KEY) do
+        mappings = read_mappings
+        mappings.reject! { |m| expired_mapping?(m) }
 
-      mappings << { "id" => mock_id, "match" => match, "created_at" => Time.now.to_i, "ttl" => ttl }
+        mappings << { "id" => mock_id, "match" => match, "created_at" => Time.now.to_i, "ttl" => ttl }
 
-      Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
+        Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
+      end
     end
 
     # Read and return all non-expired mappings.
@@ -88,9 +93,11 @@ module Mockit
     #
     # @param mock_id [String]
     def self.delete_mapping(mock_id:)
-      mappings = read_mappings
-      mappings.reject! { |m| m["id"] == mock_id }
-      Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
+      with_lock(MAPPINGS_LOCK_KEY) do
+        mappings = read_mappings
+        mappings.reject! { |m| m["id"] == mock_id }
+        Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
+      end
     end
 
     # Returns whether a mapping has expired based on its `created_at` and `ttl`.
@@ -191,5 +198,43 @@ module Mockit
       # delete mappings that reference this mock id
       delete_mapping(mock_id: mock_id)
     end
+
+    # Distributed lock implementation using cache store.
+    # Acquires a lock, executes the block, and releases the lock.
+    #
+    # @param lock_key [String] the key to use for locking
+    # @param timeout [Integer] maximum time to wait for lock acquisition
+    # @yield block to execute while holding the lock
+    def self.with_lock(lock_key, timeout: LOCK_TIMEOUT)
+      lock_token = SecureRandom.uuid
+      deadline = Time.now + timeout
+      acquired = false
+
+      # Try to acquire lock with exponential backoff
+      loop do
+        # Try to set the lock key if it doesn't exist
+        if Mockit.storage.write(lock_key, lock_token, expires_in: LOCK_TIMEOUT, unless_exist: true)
+          acquired = true
+          break
+        end
+
+        # Check if we've exceeded the timeout
+        raise Mockit::Error, "Failed to acquire lock on #{lock_key} within #{timeout} seconds" if Time.now >= deadline
+
+        # Wait a bit before retrying (exponential backoff with jitter)
+        sleep(0.01 + (rand * 0.02))
+      end
+
+      # Execute the block while holding the lock
+      yield
+    ensure
+      # Release the lock only if we acquired it
+      # Check that our token is still in place to avoid releasing someone else's lock
+      if acquired
+        current_token = Mockit.storage.read(lock_key)
+        Mockit.storage.delete(lock_key) if current_token == lock_token
+      end
+    end
+    private_class_method :with_lock
   end
 end
