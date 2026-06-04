@@ -33,6 +33,65 @@ RSpec.describe Mockit::Middleware do
       expect(captured[:mock_id]).to be_nil
     end
 
+    it "sets mock_id when body matches regex" do
+      mapping = { "id" => "body-mock", "match" => { "body" => "hello" }, "created_at" => Time.now.to_i, "ttl" => 3600 }
+      allow(Mockit::Store).to receive(:read_mappings).and_return([mapping])
+
+      env = { "PATH_INFO" => "/anything", "rack.input" => StringIO.new("say hello world") }
+      middleware.call(env)
+      expect(captured[:mock_id]).to eq("body-mock")
+    end
+
+    it "does not set mock_id when body does not match regex" do
+      mapping = { "id" => "body-mock", "match" => { "body" => "^hello$" }, "created_at" => Time.now.to_i,
+                  "ttl" => 3600 }
+      allow(Mockit::Store).to receive(:read_mappings).and_return([mapping])
+
+      env = { "PATH_INFO" => "/anything", "rack.input" => StringIO.new("say hello world") }
+      middleware.call(env)
+      expect(captured[:mock_id]).to be_nil
+    end
+
+    it "sets mock_id when body_json matches nested structure" do
+      mapping = {
+        "id" => "json-mock",
+        "match" => { "body_json" => { "user" => { "role" => "admin" } } },
+        "created_at" => Time.now.to_i,
+        "ttl" => 3600
+      }
+      allow(Mockit::Store).to receive(:read_mappings).and_return([mapping])
+
+      body = '{"user":{"role":"admin","name":"Alice"}}'
+      env = { "PATH_INFO" => "/anything", "rack.input" => StringIO.new(body) }
+      middleware.call(env)
+      expect(captured[:mock_id]).to eq("json-mock")
+    end
+
+    it "does not set mock_id when body_json value does not match" do
+      mapping = {
+        "id" => "json-mock",
+        "match" => { "body_json" => { "user" => { "role" => "admin" } } },
+        "created_at" => Time.now.to_i,
+        "ttl" => 3600
+      }
+      allow(Mockit::Store).to receive(:read_mappings).and_return([mapping])
+
+      body = '{"user":{"role":"viewer"}}'
+      env = { "PATH_INFO" => "/anything", "rack.input" => StringIO.new(body) }
+      middleware.call(env)
+      expect(captured[:mock_id]).to be_nil
+    end
+
+    it "does not set mock_id when body_json is not valid JSON" do
+      mapping = { "id" => "json-mock", "match" => { "body_json" => { "action" => "create" } },
+                  "created_at" => Time.now.to_i, "ttl" => 3600 }
+      allow(Mockit::Store).to receive(:read_mappings).and_return([mapping])
+
+      env = { "PATH_INFO" => "/anything", "rack.input" => StringIO.new("not json") }
+      middleware.call(env)
+      expect(captured[:mock_id]).to be_nil
+    end
+
     it "logs and skips when read_mappings raises" do
       allow(Mockit::Store).to receive(:read_mappings).and_raise(StandardError.new("boom"))
       expect(Mockit.logger).to receive(:error).with(/MappingFilter error, skipping mappings/)
