@@ -20,6 +20,7 @@ module TestApp
     initializer :append_routes do |app|
       app.routes.append do
         get "/ping", to: ->(_env) { [200, { "Content-Type" => "text/plain" }, ["pong"]] }
+        post "/probe", to: ->(_env) { [200, { "Content-Type" => "application/json" }, [{ mock_id: Mockit::Store.current_mock_id }.to_json]] }
         mount Mockit::Engine => "/mockit"
       end
     end

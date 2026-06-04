@@ -12,19 +12,14 @@ module Mockit
       # - "headers": hash of header_name => regex_or_value (regex string or literal)
       # - "params": hash of param_name => regex_or_value matched against query string
       def self.match?(mapping, env)
-        match = mapping["match"] || {}
-
-        path = match_path?(match, env)
-        remote = match_remote?(match, env)
-        headers = match_headers?(match, env)
-        params = match_params?(match, env)
-
-        Mockit.logger.debug <<-INFO
-          Mockit Match #{env}: path #{path}; remote #{remote}; headers #{headers}; params #{params}.
-          Mapping: #{mapping}
-        INFO
-
-        path && remote && headers && params
+        m = mapping["match"] || {}
+        results = {
+          path: match_path?(m, env), remote: match_remote?(m, env),
+          headers: match_headers?(m, env), params: match_params?(m, env),
+          body: match_body?(m, env), body_json: match_body_json?(m, env)
+        }
+        Mockit.logger.debug("Mockit Match #{env}: #{results}. Mapping: #{mapping}")
+        results.values.all?
       end
 
       def self.match_path?(match, env)
@@ -44,23 +39,14 @@ module Mockit
       def self.match_headers?(match, env)
         return true unless match["headers"].is_a?(Hash)
 
-        match["headers"].each do |h_name, h_val|
-          return false unless match_header_entry?(h_name, h_val, env)
-        end
-
-        true
+        match["headers"].all? { |h_name, h_val| match_header_entry?(h_name, h_val, env) }
       end
 
       def self.match_params?(match, env)
         return true unless match["params"].is_a?(Hash)
 
         params_hash = parse_query(env)
-
-        match["params"].each do |p_name, p_val|
-          return false unless match_param_entry?(p_name, p_val, params_hash)
-        end
-
-        true
+        match["params"].all? { |p_name, p_val| match_param_entry?(p_name, p_val, params_hash) }
       end
 
       def self.match_header_entry?(h_name, h_val, env)
@@ -89,9 +75,54 @@ module Mockit
       end
 
       def self.header_request_value(env, h_name)
-        val = env["HTTP_#{h_name.upcase.tr("-", "_")}"]
-        val = val.to_s unless val.nil?
-        val
+        env["HTTP_#{h_name.upcase.tr("-", "_")}"]&.to_s
+      end
+
+      def self.match_body?(match, env)
+        return true unless match["body"]
+
+        safe_regex_match(read_body(env), match["body"])
+      end
+
+      def self.match_body_json?(match, env)
+        return true unless match["body_json"].is_a?(Hash)
+
+        parsed = JSON.parse(read_body(env))
+        match_json_node?(match["body_json"], parsed)
+      rescue JSON::ParserError
+        false
+      end
+
+      def self.match_json_node?(pattern, value)
+        case pattern
+        when Hash  then match_json_hash?(pattern, value)
+        when Array then match_json_array?(pattern, value)
+        else            match_value_with_pattern(value&.to_s, pattern)
+        end
+      end
+
+      def self.match_json_hash?(pattern, value)
+        return false unless value.is_a?(Hash)
+
+        pattern.all? { |key, sub| match_json_node?(sub, value[key.to_s]) }
+      end
+
+      def self.match_json_array?(pattern, value)
+        return false unless value.is_a?(Array)
+
+        pattern.each_with_index.all? { |sub, i| match_json_node?(sub, value[i]) }
+      end
+
+      def self.read_body(env)
+        env["mockit.body"] ||= read_rack_body(env["rack.input"])
+      end
+
+      def self.read_rack_body(input)
+        return "" unless input
+
+        body = input.read
+        input.rewind
+        body
       end
 
       def self.parse_query(env)
