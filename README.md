@@ -259,7 +259,7 @@ curl "http://localhost:3000/mockit/mocks?service=payment_service" -H "X-Mockit-I
 
 ```bash
 # map requests matching path ^/ttl$ to the mock id present on the current request
-# (set the mock id via header `X-Mockit-Id` or legacy `X-Mockit-Id`)
+# (set the mock id via header `X-Mockit-Id` or legacy `X-Mock-Id`)
 curl -X POST http://localhost:3000/mockit/map_request \
   -H "Content-Type: application/json" \
   -H "X-Mockit-Id: abc" \
