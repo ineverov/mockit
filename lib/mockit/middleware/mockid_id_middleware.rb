@@ -31,7 +31,7 @@ module Mockit
 
       def extract_mock_id(env)
         deprecation_check(env)
-        env["HTTP_X_MOCKIT_ID"] || env["HTTP_X_MOCK_ID"]
+        env["HTTP_X_MOCKIT_ID"] || env["HTTP_X_MOCK_ID"] || Mockit.default_mock_id
       end
 
       def deprecation_check(env)

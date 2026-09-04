@@ -40,6 +40,8 @@ Mount the engine in your app:
 mount Mockit::Engine => "/mockit"
 ```
 
+This also mounts a browsable scenario-picker UI at `/mockit/ui` alongside the JSON API — see [Scenario-picker UI](#-scenario-picker-ui) below, including a note on restricting access to it.
+
 ---
 
 ## ⚙️ Configuration
@@ -187,6 +189,61 @@ Retrieve a mock response.
 #### Query Params
 
 * `service`: String (required)
+
+---
+
+## 🖥 Scenario-picker UI
+
+A server-rendered UI is mounted at `/mockit/ui` alongside the JSON API, backed by the same `Mockit::Store` (`/mockit/mocks` and `/mockit/map_request` are untouched). No JavaScript, no extra gem dependencies.
+
+Unlike the JSON API, the UI renders HTML forms and needs session middleware enabled in the host app (for CSRF protection and flash messages) — the same requirement `Sidekiq::Web` and `Flipper::UI` have. Most Rails apps have this by default; a host running `config.api_only = true` does not, and needs to add it back (see the [Rails guide](https://guides.rubyonrails.org/api_app.html#using-session-middlewares)) before `/mockit/ui` will work. Visiting `/mockit/ui` without session middleware renders an explanatory error instead of a bare stack trace.
+
+* `GET /mockit/ui` — enter a mock id (the same value normally sent as `X-Mockit-Id`). Pre-filled with `Mockit.default_mock_id` when a host app has set one, so you usually just hit Enter instead of typing it — but it never redirects past this prompt on its own.
+* `GET /mockit/ui/:mock_id` — lists every service currently overridden for that mock id, plus every service with a registered scenario (see below) even if it isn't mocked yet for this mock id. A "Switch mock ID" field at the top lets you jump to a different id without going back to `/mockit/ui`.
+* Each service row shows a scenario picker (if any are registered), a "Reset to happy path" button (if a `default: true` scenario is registered), and "Delete (use real connection)" to remove the override and let the real vendor call through. The raw JSON edit-and-apply form still exists per service, collapsed under "Advanced: edit JSON directly".
+* "Delete all overrides for this mock ID" tears down every override and mapping for that mock id (same as `DELETE /mockit/mocks/teardown`).
+
+### Named scenarios
+
+Register reusable override sets in code — checked into your repo, similar in spirit to picking a VCR cassette — so the picker offers a dropdown instead of requiring hand-typed JSON every time:
+
+```ruby
+# config/initializers/mockit.rb
+Mockit.register_scenario(
+  service: "external_service",
+  name: "happy_path",
+  default: true, # what "Reset to happy path" re-applies
+  overrides: -> { { "status" => "ok", "data" => build_happy_path_payload } } # or a plain Hash
+)
+```
+
+`overrides` may be a `Hash` (used as-is) or a zero-arg callable, resolved fresh every time the scenario is applied — use a callable when the payload has to be built at apply-time (e.g. from a factory) rather than baked in once at boot. At most one scenario per service should be `default: true`.
+
+### Access restriction
+
+The UI implements **no authentication or authorization of its own** — same posture as `Sidekiq::Web` or `Flipper::UI`: the gem ships a mountable engine, and it's the host app's job to decide whether and how to restrict it. `Mockit::Engine`'s mount is commonly guarded only by environment (`unless Rails.env.production?`), which is *not* an access-control mechanism — it just keeps the engine out of production. If you want to restrict who can reach the UI (e.g. in a shared staging environment), wrap the mount in your own auth constraint:
+
+```ruby
+# config/routes.rb
+authenticate(:user, ->(u) { u.admin? }) do
+  mount Mockit::Engine, at: "/mockit"
+end
+```
+
+Note that constraining the mount this way also gates the JSON API (`/mockit/mocks`, `/mockit/map_request`) behind the same check — if automated test suites call those endpoints directly (as `X-Mockit-Id`-only clients, with no session), a session-based constraint like the example above will break them. Machine callers need a different mechanism (e.g. a shared API key) than a human clicking through the UI; this gem doesn't prescribe one, since it depends on how each host app already authenticates its internal tooling.
+
+### Default mock id for local single-developer servers
+
+`Mockit.default_mock_id` lets every request that carries no `X-Mockit-Id`/`X-Mock-Id` header of its own fall back to a fixed mock id, instead of running unmocked. An explicit header still always wins. This is meant for a local dev server with exactly one user — not staging/sandbox, where it would silently mock every engineer's traffic:
+
+```ruby
+# config/initializers/mockit.rb, guarded to development only
+Mockit.default_mock_id = "dev-default" if Rails.env.development? && ENV["MOCKIT"] == "true"
+```
+
+Combine with `Mockit::Store.write(service:, overrides:)` at boot (e.g. in `Rails.application.config.after_initialize`) to seed happy-path defaults under that same id, and then browse the app normally — no header, no `/mockit/ui` visit required first. You can still open `/mockit/ui/dev-default` any time to see or change what's mocked.
+
+Setting `default_mock_id` makes `/mockit/map_request` mapping rules unreachable for header-less requests, since `MockitIdMiddleware` (which runs first) already resolves a mock id before `MappingFilter` gets a chance to match — this is intentional: a fixed default and pattern-based mapping solve the same "which mock id is this request" problem, and a default is the simpler, more predictable answer when a machine's traffic all belongs to one developer anyway. Requests carrying their own header are unaffected either way.
 
 ---
 

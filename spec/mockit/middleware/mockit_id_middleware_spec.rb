@@ -25,4 +25,31 @@ RSpec.describe Mockit::Middleware::MockitIdMiddleware do
     status, _headers, _body = middleware.call(env)
     expect(status).to eq(200)
   end
+
+  context "with Mockit.default_mock_id set" do
+    after { Mockit.default_mock_id = nil }
+
+    it "falls back to the default when no header is present" do
+      Mockit.default_mock_id = "dev-default"
+      expect(Mockit::Store).to receive(:mock_id=).with("dev-default")
+
+      status, _headers, _body = middleware.call({})
+      expect(status).to eq(200)
+    end
+
+    it "still prefers an explicit header over the default" do
+      Mockit.default_mock_id = "dev-default"
+      expect(Mockit::Store).to receive(:mock_id=).with("mock-header-id")
+
+      status, _headers, _body = middleware.call({ "HTTP_X_MOCKIT_ID" => "mock-header-id" })
+      expect(status).to eq(200)
+    end
+  end
+
+  it "sets no mock_id when neither a header nor a default is present" do
+    expect(Mockit::Store).not_to receive(:mock_id=)
+
+    status, _headers, _body = middleware.call({})
+    expect(status).to eq(200)
+  end
 end

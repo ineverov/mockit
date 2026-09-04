@@ -7,11 +7,13 @@ RSpec.describe Mockit::Store do
 
   before do
     RequestStore.store[:mockit_id] = mock_id
+    Mockit.storage.delete(Mockit::KnownMockIds::KEY)
   end
 
   after do
     RequestStore.store.clear
     Mockit.storage.delete("mockit:mappings")
+    Mockit.storage.delete(Mockit::KnownMockIds::KEY)
   end
 
   it "writes and reads mocked data from Redis" do
@@ -72,6 +74,21 @@ RSpec.describe Mockit::Store do
     fresh = { "id" => "f", "created_at" => Time.now.to_i, "ttl" => 10_000 }
     expect(described_class.expired_mapping?(old)).to be true
     expect(described_class.expired_mapping?(fresh)).to be false
+  end
+
+  it "remembers a mock id in Mockit::KnownMockIds when an override is written (see known_mock_ids_spec.rb)" do
+    described_class.write(service: "test_service", overrides: { a: 1 })
+
+    expect(Mockit::KnownMockIds.all).to eq([mock_id])
+  end
+
+  it "forgets a mock id via KnownMockIds when delete_all tears it down" do
+    described_class.write(service: "test_service", overrides: { a: 1 })
+    expect(Mockit::KnownMockIds.all).to include(mock_id)
+
+    described_class.delete_all
+
+    expect(Mockit::KnownMockIds.all).not_to include(mock_id)
   end
 
   it "delete_all falls back when storage lacks clear" do
