@@ -47,6 +47,12 @@ module Mockit
     # path" re-applies.
     def register_scenario(service:, name:, overrides:, default: false)
       by_service = (@scenarios ||= {})[service.to_s] ||= {}
+
+      if default
+        existing_name, = by_service.find { |n, entry| entry[:default] && n != name.to_s }
+        raise ArgumentError, "#{service} already has a default scenario (#{existing_name})" if existing_name
+      end
+
       by_service[name.to_s] = { overrides: overrides, default: default }
     end
 

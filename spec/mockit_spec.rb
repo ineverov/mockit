@@ -24,6 +24,24 @@ RSpec.describe Mockit do
 
       expect(described_class.scenarios_for("external_service").keys).to eq(["happy_path"])
     end
+
+    it "raises when a second default scenario is registered for the same service" do
+      described_class.register_scenario(service: "external_service", name: "happy_path", overrides: {}, default: true)
+
+      expect do
+        described_class.register_scenario(service: "external_service", name: "also_happy", overrides: {}, default: true)
+      end.to raise_error(ArgumentError, /already has a default scenario \(happy_path\)/)
+    end
+
+    it "allows re-registering the same default scenario name" do
+      described_class.register_scenario(service: "external_service", name: "happy_path", overrides: {}, default: true)
+
+      expect do
+        described_class.register_scenario(
+          service: "external_service", name: "happy_path", overrides: { "a" => 1 }, default: true
+        )
+      end.not_to raise_error
+    end
   end
 
   describe ".default_scenario_name_for" do

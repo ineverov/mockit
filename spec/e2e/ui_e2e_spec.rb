@@ -58,6 +58,28 @@ RSpec.describe "Mockit scenario-picker UI", type: :request do
       expect(response.body).to include(mock_id)
       expect(response.body).not_to include(%(value="dev-default"))
     end
+
+    it "rejects a mock id containing '/' instead of building links the single-segment route can't match" do
+      get "/mockit/ui", params: { mock_id: "team/qa-1" }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("Mock IDs containing")
+      expect(response.body).to include("Select a mock ID")
+    end
+
+    it "omits a known mock id containing '/' from the recently-used list" do
+      RequestStore.store[:mockit_id] = "team/qa-1"
+      Mockit::Store.write(service: "external_service", overrides: { "status" => "ok" })
+      RequestStore.store.clear
+
+      get "/mockit/ui"
+
+      expect(response.body).not_to include("team/qa-1")
+
+      RequestStore.store[:mockit_id] = "team/qa-1"
+      Mockit::Store.delete_all
+      RequestStore.store.clear
+    end
   end
 
   describe "GET /mockit/ui/:mock_id" do
@@ -232,6 +254,16 @@ RSpec.describe "Mockit scenario-picker UI", type: :request do
 
       follow_redirect!
       expect(response.body).to include("Service and scenario are required")
+    end
+
+    it "sets a flash alert instead of a server error when the scenario's callable raises" do
+      Mockit.register_scenario(service: "external_service", name: "broken", overrides: -> { raise "factory blew up" })
+
+      post "/mockit/ui/#{mock_id}/services/scenario",
+           params: { service: "external_service", scenario_name: "broken" }
+
+      follow_redirect!
+      expect(response.body).to include("factory blew up")
     end
   end
 

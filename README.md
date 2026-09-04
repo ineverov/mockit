@@ -243,6 +243,16 @@ Mockit.default_mock_id = "dev-default" if Rails.env.development? && ENV["MOCKIT"
 
 Combine with `Mockit::Store.write(service:, overrides:)` at boot (e.g. in `Rails.application.config.after_initialize`) to seed happy-path defaults under that same id, and then browse the app normally — no header, no `/mockit/ui` visit required first. You can still open `/mockit/ui/dev-default` any time to see or change what's mocked.
 
+`Store.write` keys off the *current request's* mock id (thread-local, via `RequestStore`), which is unset at boot — so set `Mockit::Store.mock_id` explicitly before writing, or the override silently lands under a blank id instead of `default_mock_id`:
+
+```ruby
+# config/initializers/mockit.rb, guarded to development only
+Rails.application.config.after_initialize do
+  Mockit::Store.mock_id = Mockit.default_mock_id
+  Mockit::Store.write(service: "external_service", overrides: { "status" => "ok" })
+end
+```
+
 Setting `default_mock_id` makes `/mockit/map_request` mapping rules unreachable for header-less requests, since `MockitIdMiddleware` (which runs first) already resolves a mock id before `MappingFilter` gets a chance to match — this is intentional: a fixed default and pattern-based mapping solve the same "which mock id is this request" problem, and a default is the simpler, more predictable answer when a machine's traffic all belongs to one developer anyway. Requests carrying their own header are unaffected either way.
 
 ---

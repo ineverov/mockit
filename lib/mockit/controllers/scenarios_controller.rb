@@ -29,8 +29,18 @@ module Mockit
     # the picker form (same one shown here or on any mock's page) is a plain
     # GET that re-renders this same action with a mock_id query param.
     def show
-      @mock_id = params[:mock_id].presence || Mockit.default_mock_id
-      @known_mock_ids = Mockit::KnownMockIds.all
+      mock_id = params[:mock_id].presence || Mockit.default_mock_id
+      # `:mock_id` is a single path segment (see routes.rb) and can't carry a
+      # literal "/" -- reject rather than build service-action links that
+      # would 404. Ids created via the JSON API have no such restriction, so
+      # this only affects browsing one of those ids through the UI.
+      if mock_id&.include?("/")
+        flash.now[:alert] = "Mock IDs containing \"/\" aren't supported by this UI -- use the JSON API for that id."
+        mock_id = nil
+      end
+
+      @mock_id = mock_id
+      @known_mock_ids = Mockit::KnownMockIds.all.reject { |id| id.include?("/") }
       @services = @mock_id ? services_for(@mock_id) : []
     end
 
@@ -114,7 +124,7 @@ module Mockit
       overrides = Mockit.resolve_scenario(service: service, name: scenario_name)
       Mockit::Store.mock_id = mock_id
       Mockit::Store.write(service: service, overrides: overrides)
-    rescue ArgumentError => e
+    rescue StandardError => e
       flash[:alert] = e.message
     end
 
