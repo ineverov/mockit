@@ -9,5 +9,6 @@ RSpec.describe Mockit::Middleware::SidekiqClient do
 
     described_class.new.call("TestWorker", job, "default", nil) {} # rubocop:disable Lint/EmptyBlock
     expect(job["mockit_id"]).to eq("sidekiq-mock-id")
+    RequestStore.store.clear
   end
 end

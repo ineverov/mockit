@@ -1,0 +1,106 @@
+<div class="panel">
+  <h2><% if @mock_id %>Scenarios for <code><%= @mock_id %></code><% else %>Select a mock ID<% end %></h2>
+  <%= form_with url: ui_root_path, method: :get, local: true, class: "mockid-switch" do %>
+    <label for="mock_id" class="hint"><%= @mock_id ? "Switch mock ID:" : "Mock ID (the value normally sent as X-Mockit-Id):" %></label>
+    <input type="text" name="mock_id" id="mock_id" list="known-mock-ids" value="<%= @mock_id %>" placeholder="e.g. abc123, or pick a recent one" required>
+    <datalist id="known-mock-ids">
+      <% @known_mock_ids.each do |id| %>
+        <option value="<%= id %>">
+      <% end %>
+    </datalist>
+    <button type="submit">Go</button>
+  <% end %>
+  <% if @known_mock_ids.any? %>
+    <p class="hint">Recently used: <%= safe_join(@known_mock_ids.map { |id| link_to id, ui_mock_path(id) }, ", ") %></p>
+  <% end %>
+</div>
+
+<% if @mock_id.nil? %>
+  <p class="hint">Pick a recent mock ID above, or type a new one, to see or change what's mocked for it.</p>
+<% else %>
+<div class="panel">
+  <% if @services.empty? %>
+    <p class="hint">No overrides set for this mock ID yet.</p>
+  <% else %>
+    <table>
+      <thead>
+        <tr><th>Service</th><th>State</th><th>Scenario</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        <% @services.each do |service| %>
+          <tr>
+            <td><code><%= service[:name] %></code></td>
+            <td>
+              <% if service[:overrides] %>
+                <span class="badge badge-on">Mocked</span>
+              <% else %>
+                <span class="badge badge-off">Not mocked &mdash; real vendor</span>
+              <% end %>
+            </td>
+            <td>
+              <% if service[:scenario_names].any? %>
+                <%= form_with url: ui_mock_apply_scenario_path(@mock_id), method: :post, local: true, class: "scenario-apply" do %>
+                  <input type="hidden" name="service" value="<%= service[:name] %>">
+                  <select name="scenario_name">
+                    <% service[:scenario_names].each do |scenario_name| %>
+                      <option value="<%= scenario_name %>"><%= scenario_name %></option>
+                    <% end %>
+                  </select>
+                  <button type="submit">Apply</button>
+                <% end %>
+              <% else %>
+                <span class="hint">No scenarios registered</span>
+              <% end %>
+            </td>
+            <td>
+              <div class="actions">
+                <% if service[:default_scenario_name] %>
+                  <%= form_with url: ui_mock_reset_service_path(@mock_id), method: :post, local: true, class: "scenario-reset" do %>
+                    <input type="hidden" name="service" value="<%= service[:name] %>">
+                    <button type="submit">Reset to happy path</button>
+                  <% end %>
+                <% end %>
+                <% if service[:overrides] %>
+                  <%= form_with url: ui_mock_service_delete_path(@mock_id), method: :post, local: true, class: "scenario-delete" do %>
+                    <input type="hidden" name="service" value="<%= service[:name] %>">
+                    <button type="submit">Delete (use real connection)</button>
+                  <% end %>
+                <% end %>
+              </div>
+              <% if service[:overrides] %>
+                <details>
+                  <summary>Advanced: edit JSON directly</summary>
+                  <%= form_with url: ui_mock_services_path(@mock_id), method: :post, local: true do %>
+                    <input type="hidden" name="service" value="<%= service[:name] %>">
+                    <textarea name="overrides_json"><%= JSON.pretty_generate(service[:overrides]) %></textarea>
+                    <button type="submit">Apply</button>
+                  <% end %>
+                </details>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <%= form_with url: ui_mock_teardown_path(@mock_id), method: :post, local: true, class: "teardown" do %>
+      <button type="submit">Delete all overrides for this mock ID</button>
+    <% end %>
+  <% end %>
+</div>
+
+<div class="panel">
+  <h3>Add or update a service override</h3>
+  <%= form_with url: ui_mock_services_path(@mock_id), method: :post, local: true do %>
+    <p>
+      <label for="service">Service</label><br>
+      <input type="text" name="service" id="service" placeholder="e.g. external_service" required>
+    </p>
+    <p>
+      <label for="overrides_json">Overrides (JSON object)</label><br>
+      <textarea name="overrides_json" id="overrides_json" placeholder="{}"></textarea>
+    </p>
+    <button type="submit">Apply</button>
+  <% end %>
+</div>
+<% end %>

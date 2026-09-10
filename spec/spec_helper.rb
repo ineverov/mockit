@@ -62,6 +62,16 @@ RSpec.configure do |config|
   config.infer_spec_type_from_file_location!
   config.use_transactional_fixtures = true
 
+  # Mockit's entire mocking behavior is keyed off RequestStore's thread-local
+  # mockit_id, so any spec that sets it directly (bypassing the HTTP
+  # middleware, which clears it itself) leaks that mock id into whichever
+  # spec runs next in random order otherwise. A few specs already clear it
+  # themselves; this is a blanket safety net so a future one that forgets
+  # can't cause order-dependent flakiness elsewhere in the suite.
+  config.after do
+    RequestStore.store.clear
+  end
+
   def app
     Rails.application
   end

@@ -18,6 +18,7 @@ module Mockit
       return unless current_mock_id
 
       add_service_for_mock(current_mock_id, service)
+      KnownMockIds.remember(current_mock_id, ttl: ttl)
     end
 
     # Read stored overrides for a service under the current request's mock id.
@@ -196,6 +197,8 @@ module Mockit
 
       # delete mappings that reference this mock id
       delete_mapping(mock_id: mock_id)
+
+      KnownMockIds.forget(mock_id)
     end
   end
 end

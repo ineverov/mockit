@@ -15,6 +15,7 @@ module TestApp
     config.logger = Logger.new(nil)
     config.secret_key_base = "test"
     config.hosts.clear
+    config.action_controller.allow_forgery_protection = false
 
     # Insert the engine
     initializer :append_routes do |app|
