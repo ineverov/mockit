@@ -21,6 +21,12 @@ module Mockit
         ids << { "id" => mock_id, "created_at" => Time.now.to_i, "ttl" => ttl }
         Mockit.storage.write(KEY, ids.to_json)
       end
+    rescue Mockit::Error => e
+      # This list is a best-effort convenience for the scenario-picker UI, not
+      # part of the actual mocking mechanism -- a lock timeout here must never
+      # bubble up and fail the real Store.write it was called from.
+      Mockit.logger.warn("Mockit::KnownMockIds.remember: #{e.message} -- skipping, " \
+                         "scenario-picker UI list may be stale")
     end
 
     # Stop listing a mock id (used once everything under it has been torn down).
@@ -31,6 +37,8 @@ module Mockit
         ids = read.reject { |e| e["id"] == mock_id }
         Mockit.storage.write(KEY, ids.to_json)
       end
+    rescue Mockit::Error => e
+      Mockit.logger.warn("Mockit::KnownMockIds.forget: #{e.message} -- skipping, scenario-picker UI list may be stale")
     end
 
     # Mock ids with at least one live (unexpired) override, most recently

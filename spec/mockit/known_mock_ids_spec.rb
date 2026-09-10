@@ -69,4 +69,23 @@ RSpec.describe Mockit::KnownMockIds do
       expect(described_class.all).to eq(["mock-b"])
     end
   end
+
+  describe "lock timeout (regression: must never fail the caller's real Store.write)" do
+    before do
+      stub_const("Mockit::DistributedLock::TIMEOUT", 0.1)
+      allow(Mockit.storage).to receive(:write).with(described_class::LOCK_KEY, anything, anything).and_return(false)
+    end
+
+    it ".remember swallows the timeout and logs a warning instead of raising" do
+      expect(Mockit.logger).to receive(:warn).with(/KnownMockIds\.remember.*Failed to acquire lock/)
+
+      expect { described_class.remember("mock-a", ttl: 600) }.not_to raise_error
+    end
+
+    it ".forget swallows the timeout and logs a warning instead of raising" do
+      expect(Mockit.logger).to receive(:warn).with(/KnownMockIds\.forget.*Failed to acquire lock/)
+
+      expect { described_class.forget("mock-a") }.not_to raise_error
+    end
+  end
 end
