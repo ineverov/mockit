@@ -173,4 +173,32 @@ RSpec.describe Mockit::Store do
       end.to raise_error(Mockit::Error, /Failed to acquire lock/)
     end
   end
+
+  describe "configurable default TTLs" do
+    after do
+      Mockit.mock_ttl = nil
+      Mockit.mapping_ttl = nil
+    end
+
+    it "defaults to 600 seconds" do
+      expect(Mockit.mock_ttl).to eq(600)
+      expect(Mockit.mapping_ttl).to eq(600)
+    end
+
+    it "uses Mockit.mock_ttl when writing mocks" do
+      Mockit.mock_ttl = 42
+      allow(Mockit.storage).to receive(:write).and_call_original
+      expect(Mockit.storage).to receive(:write)
+        .with("mockit:#{mock_id}:svc", anything, expires_in: 42).and_call_original
+
+      described_class.write(service: "svc", overrides: { a: 1 })
+    end
+
+    it "uses Mockit.mapping_ttl when writing mappings" do
+      Mockit.mapping_ttl = 77
+      described_class.write_mapping(match: {}, mock_id: "m")
+
+      expect(described_class.read_mappings.last["ttl"]).to eq(77)
+    end
+  end
 end

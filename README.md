@@ -159,6 +159,12 @@ mockit:<mock_id>:<service>
 ```
 
 Mocks expire after 10 minutes by default (`ttl: 600s`), configurable per call.
+Change the defaults globally (mock overrides and `/map_request` mappings, in seconds):
+
+```ruby
+Mockit.mock_ttl = 1800
+Mockit.mapping_ttl = 900
+```
 
 ---
 

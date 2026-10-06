@@ -35,6 +35,19 @@ module Mockit
     # as before this existed.
     attr_accessor :default_mock_id
 
+    # Default lifetime (seconds) of stored mock overrides, and of request
+    # mappings created via POST /map_request. Both can still be overridden
+    # per call (`ttl:` / the `ttl` param).
+    attr_writer :mock_ttl, :mapping_ttl
+
+    def mock_ttl
+      @mock_ttl || 600
+    end
+
+    def mapping_ttl
+      @mapping_ttl || 600
+    end
+
     # Named, reusable override sets a host app registers at boot (e.g. from
     # its own config/initializers/mockit.rb), so the scenario-picker UI can
     # offer a dropdown per service instead of requiring hand-typed JSON every

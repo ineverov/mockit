@@ -51,7 +51,7 @@ module Mockit
     def create_mapping
       match = params.require(:match).permit!.to_h
       mock_id = Mockit::Store.current_mock_id
-      ttl = params[:ttl] || 600
+      ttl = params[:ttl] || Mockit.mapping_ttl
 
       unless mock_id
         render json: { error: "mock_id missing" }, status: :bad_request

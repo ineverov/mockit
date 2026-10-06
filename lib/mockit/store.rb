@@ -9,8 +9,8 @@ module Mockit
     #
     # @param service [String] service identifier
     # @param overrides [Hash] JSON-serializable overrides to store
-    # @param ttl [Integer] expiration in seconds (default: 600)
-    def self.write(service:, overrides:, ttl: 600)
+    # @param ttl [Integer] expiration in seconds (default: Mockit.mock_ttl)
+    def self.write(service:, overrides:, ttl: Mockit.mock_ttl)
       key = current_mock_key(service:)
       Mockit.logger.info "Setting key #{key} with value #{overrides.to_json}"
       Mockit.storage.write(key, overrides.to_json, expires_in: ttl)
@@ -54,7 +54,7 @@ module Mockit
     # @param match [Hash] matching criteria (e.g. { "path" => "^/x$" })
     # @param mock_id [String] mock id to associate
     # @param ttl [Integer] time-to-live in seconds for this mapping
-    def self.write_mapping(match:, mock_id:, ttl: 3600)
+    def self.write_mapping(match:, mock_id:, ttl: Mockit.mapping_ttl)
       DistributedLock.new(Mockit.storage, MAPPINGS_LOCK_KEY).synchronize do
         mappings = read_mappings
         mappings.reject! { |m| expired_mapping?(m) }
