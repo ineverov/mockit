@@ -19,4 +19,5 @@ gem "simplecov"
 group :test do
   gem "redis"
   gem "rspec-rails"
+  gem "sidekiq"
 end

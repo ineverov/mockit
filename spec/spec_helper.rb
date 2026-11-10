@@ -22,6 +22,7 @@ unless defined?(Sidekiq)
 
     class Chain
       def add(_); end
+      def prepend(_); end
     end
 
     def self.configure_client
