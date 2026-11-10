@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "sidekiq/middleware/chain"
 
 RSpec.describe Mockit::Railtie do
   it "inserts middleware and runs post initialize hooks" do
@@ -33,5 +34,29 @@ RSpec.describe Mockit::Railtie do
     # calling the runner should execute the configured block
     Mockit.run_post_initialize_hooks!
     expect(ran).to be true
+  end
+
+  describe ".configure_sidekiq" do
+    it "runs the server middleware outside middleware registered before it, so the mock id outlives the job body" do
+      mock_id_after_job = :not_called
+      # Stands in for Sidekiq::Batch::Server: added at gem load, pushes the batch callback after the job body.
+      batch_server = Class.new do
+        define_method(:call) do |_job_instance, _job, _queue, &block|
+          block.call
+          mock_id_after_job = Mockit::Store.current_mock_id
+        end
+      end
+      chain = Sidekiq::Middleware::Chain.new
+      chain.add batch_server
+      config = instance_double(Sidekiq::Config, client_middleware: nil)
+      allow(config).to receive(:server_middleware).and_yield(chain)
+      allow(Sidekiq).to receive(:configure_client)
+      allow(Sidekiq).to receive(:configure_server).and_yield(config)
+
+      described_class.configure_sidekiq
+      chain.invoke(Object.new, { "mockit_id" => "batch-mock-id" }, "default") { nil }
+
+      expect(mock_id_after_job).to eq("batch-mock-id")
+    end
   end
 end

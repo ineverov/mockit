@@ -13,17 +13,20 @@ module Mockit
     # After Rails initializes, configure Sidekiq middleware (if present)
     # and run registered post-initialize hooks.
     config.after_initialize do
-      if defined?(Sidekiq)
-        Sidekiq.configure_client do |config|
-          config.client_middleware { |chain| chain.add Mockit::Middleware::SidekiqClient }
-        end
-
-        Sidekiq.configure_server do |config|
-          config.client_middleware { |chain| chain.add Mockit::Middleware::SidekiqClient }
-          config.server_middleware { |chain| chain.add Mockit::Middleware::SidekiqServer }
-        end
-      end
+      Mockit::Railtie.configure_sidekiq if defined?(Sidekiq)
       Mockit.run_post_initialize_hooks!
+    end
+
+    def self.configure_sidekiq
+      Sidekiq.configure_client do |config|
+        config.client_middleware { |chain| chain.add Mockit::Middleware::SidekiqClient }
+      end
+
+      Sidekiq.configure_server do |config|
+        config.client_middleware { |chain| chain.add Mockit::Middleware::SidekiqClient }
+        # Outermost, so middleware enqueuing after the job body (Sidekiq Pro batch callbacks) still sees the mock id.
+        config.server_middleware { |chain| chain.prepend Mockit::Middleware::SidekiqServer }
+      end
     end
   end
 end
