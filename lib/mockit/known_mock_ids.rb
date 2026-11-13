@@ -17,7 +17,7 @@ module Mockit
       return unless mock_id
 
       DistributedLock.new(Mockit.storage, LOCK_KEY).synchronize do
-        ids = read.reject { |e| e["id"] == mock_id }
+        ids = fresh.reject { |e| e["id"] == mock_id }
         ids << { "id" => mock_id, "created_at" => Time.now.to_i, "ttl" => ttl }
         Mockit.storage.write(KEY, ids.to_json)
       end
@@ -42,7 +42,8 @@ module Mockit
     end
 
     # Mock ids with at least one live (unexpired) override, most recently
-    # touched first. Expired entries are pruned as a side effect of reading.
+    # touched first. Read-only: a pruned copy written back outside the lock
+    # could drop an id `remember` just added; `remember` prunes under the lock.
     # Ordering comes from array position, not `created_at` -- `remember`
     # always re-appends a touched id at the end, and created_at's one-second
     # resolution isn't fine-grained enough to break ties between ids touched
@@ -50,11 +51,11 @@ module Mockit
     #
     # @return [Array<String>]
     def self.all
-      entries = read
-      fresh = entries.reject { |e| Store.expired_mapping?(e) }
-      Mockit.storage.write(KEY, fresh.to_json) if fresh.size != entries.size
-
       fresh.reverse.map { |e| e["id"] }
+    end
+
+    def self.fresh
+      read.reject { |e| Store.expired_mapping?(e) }
     end
 
     def self.read

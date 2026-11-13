@@ -146,6 +146,27 @@ RSpec.describe Mockit::Store do
       expect(mappings.any? { |m| m["id"] == "new" }).to be true
     end
 
+    it "skips expired mappings on read without writing the list back" do
+      old = { "id" => "old", "match" => {}, "created_at" => Time.now.to_i - 3600, "ttl" => 1 }
+      Mockit.storage.write("mockit:mappings", [old].to_json)
+      expect(Mockit.storage).not_to receive(:write)
+
+      expect(described_class.read_mappings).to eq([])
+    end
+
+    # A request without a mock id reads the mappings while a test is adding one
+    # under the lock. The reader must not write its older copy back over it.
+    it "keeps a mapping written while another request is reading" do
+      old = { "id" => "old", "match" => {}, "created_at" => Time.now.to_i - 3600, "ttl" => 1 }
+      Mockit.storage.write("mockit:mappings", [old].to_json)
+      stale_json = Mockit.storage.read("mockit:mappings")
+
+      described_class.write_mapping(match: { "path" => "^/new$" }, mock_id: "new", ttl: 10)
+      described_class.parse_mappings(stale_json)
+
+      expect(described_class.read_mappings.map { |m| m["id"] }).to eq(["new"])
+    end
+
     it "retries lock acquisition when contention occurs" do
       call_count = 0
       allow(Mockit.storage).to receive(:write) do |key, _value, _options|
