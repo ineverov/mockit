@@ -57,8 +57,6 @@ module Mockit
     def self.write_mapping(match:, mock_id:, ttl: 3600)
       DistributedLock.new(Mockit.storage, MAPPINGS_LOCK_KEY).synchronize do
         mappings = read_mappings
-        mappings.reject! { |m| expired_mapping?(m) }
-
         mappings << { "id" => mock_id, "match" => match, "created_at" => Time.now.to_i, "ttl" => ttl }
 
         Mockit.storage.write(MAPPINGS_KEY, mappings.to_json)
@@ -66,25 +64,19 @@ module Mockit
     end
 
     # Read and return all non-expired mappings.
-    # Expired mappings are pruned and persisted back to storage.
+    # Read-only: writing a pruned copy back here, outside the lock, can drop a
+    # mapping another request just added. write_mapping prunes under the lock.
     #
     # @return [Array<Hash>] list of mapping hashes
     def self.read_mappings
       json = Mockit.storage.read(MAPPINGS_KEY)
       return [] unless json
 
-      parse_and_prune_mappings(json)
+      parse_mappings(json)
     end
 
-    def self.parse_and_prune_mappings(json)
-      mappings = JSON.parse(json)
-
-      original_size = mappings.size
-      mappings.reject! { |m| expired_mapping?(m) }
-
-      Mockit.storage.write(MAPPINGS_KEY, mappings.to_json) if mappings.size != original_size
-
-      mappings
+    def self.parse_mappings(json)
+      JSON.parse(json).reject { |m| expired_mapping?(m) }
     rescue JSON::ParserError
       []
     end

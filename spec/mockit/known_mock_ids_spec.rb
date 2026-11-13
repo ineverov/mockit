@@ -44,6 +44,20 @@ RSpec.describe Mockit::KnownMockIds do
       expect(described_class.all).not_to include("expiring")
     end
 
+    it "does not write the list back when it skips an expired entry" do
+      described_class.remember("expiring", ttl: -1)
+      expect(Mockit.storage).not_to receive(:write)
+
+      expect(described_class.all).to eq([])
+    end
+
+    it "prunes expired entries when remembering another mock id" do
+      described_class.remember("expiring", ttl: -1)
+      described_class.remember("mock-a", ttl: 600)
+
+      expect(described_class.read.map { |e| e["id"] }).to eq(["mock-a"])
+    end
+
     it "returns an empty list when storage holds invalid JSON" do
       Mockit.storage.write(described_class::KEY, "not-json")
 
